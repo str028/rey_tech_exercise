@@ -15,6 +15,8 @@ logging.basicConfig(
 ON_RCV_ERR_MSG = "Error occured while receiving a message:"
 ON_SERVER_RUN_ERROR = "Error occured while running the server:"
 ON_SOCKET_ERROR = "Error occured while stablising a connection with socket:"
+SHUT_DOWN_MSG = "The server is shutting down."
+BAD_FILE_DESCRIPTOR_ERROR = "Bad file descriptor"
 BUFFER_SIZE = 1024
 UNKNOWN = 'Unknown'
 
@@ -49,10 +51,13 @@ class Server(object):
             while True:
                 connection, address = server.accept()
                 _thread.start_new_thread(self.on_new_client,(connection,address, self.port))
-        except socket.error as e:
-            logging.error(f"{ON_SOCKET_ERROR} {str(e)}")
         except KeyboardInterrupt:
             connection.close()
+        except socket.error as e:
+            if BAD_FILE_DESCRIPTOR_ERROR in str(e):
+                logging.info(SHUT_DOWN_MSG)
+            else:
+                logging.error(f"{ON_SOCKET_ERROR} {str(e)}")
         except Exception as e:
             logging.error(f"{ON_SERVER_RUN_ERROR} {str(e)}")
         finally:

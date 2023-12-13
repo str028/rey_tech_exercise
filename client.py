@@ -20,6 +20,8 @@ CHAT_PROMPT = "(Type 'exit' to terminate) Send a message: "
 ON_RCV_ERR_MSG = "Error occured while receiving a message from the server:"
 ON_SND_ERR_MSG = "Error occured while sending a message:"
 ON_SOCKET_ERROR = "Error occured while stablising a connection with socket:"
+BAD_FILE_DESCRIPTOR_ERROR = "Bad file descriptor"
+SHUT_DOWN_MSG = "The client is shutting down."
 
 BUFFER_SIZE = 1024
 SEND_TIMEOUT = 1
@@ -50,8 +52,6 @@ class Client(object):
                 self.client.send(f"{self.client_name}: {message}".encode())
                 time.sleep(SEND_TIMEOUT)
                 message = input(CHAT_PROMPT)
-        except KeyboardInterrupt:
-            self.client.close()
         except socket.error as e:
             logging.error(f"{ON_SOCKET_ERROR} {str(e)}")
         except Exception as e:
@@ -68,10 +68,11 @@ class Client(object):
                 if not recv_message:
                     break
                 logging.info(f"{recv_message}")
-        except KeyboardInterrupt:
-            self.client.close()
         except socket.error as e:
-            logging.error(f"{ON_SOCKET_ERROR} {str(e)}")
+            if BAD_FILE_DESCRIPTOR_ERROR in str(e):
+                logging.info(SHUT_DOWN_MSG)
+            else:
+                logging.error(f"{ON_SOCKET_ERROR} {str(e)}")
         except Exception as e:
             logging.error(f"{ON_RCV_ERR_MSG} {str(e)}")
         finally:
