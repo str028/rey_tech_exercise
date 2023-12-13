@@ -1,31 +1,62 @@
 import socket
 import _thread
 import argparse
+import logging
 
-def on_new_client(clientsocket, address, port):
-    try:
-        while True:
-            message = clientsocket.recv(port).decode()
-            print(f"{str(address)}: {str(message)}")
-            clientsocket.send(message.encode())
-    except Exception as e:
-        print(f"Error occured while receiving a message: {str(e)}")
-        clientsocket.close()
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    handlers=[
+        logging.FileHandler("server_debug.log"),
+        logging.StreamHandler()
+    ]
+)
+
+ON_RCV_ERR_MSG = "Error occured while receiving a message:"
+ON_SERVER_RUN_ERROR = "Error occured while running the server:"
+ON_SOCKET_ERROR = "Error occured while stablising a connection with socket:"
+BUFFER_SIZE = 1024
+UNKNOWN = 'Unknown'
 
 
-def run_server(port=3000, number_of_client=10):
-    host = socket.gethostname()
-    server = socket.socket()
-    server.bind((host, port))
-    server.listen(number_of_client)
-    print("Server has started.")
-    try:
-        while True:
-            connection, address = server.accept()
-            _thread.start_new_thread(on_new_client,(connection,address, port))
-    except Exception as e:
-        print(f"Error occured: {str(e)}")
-        connection.close()
+class Server(object):
+    def __init__(self, port=3000, number_of_client=10, host=None):
+        self.host = socket.gethostname() if host is None else host
+        self.port = port
+        self.number_of_client = number_of_client
+
+    def on_new_client(self, clientsocket, address, port):
+        try:
+            while True:
+                message = clientsocket.recv(BUFFER_SIZE).decode()
+                if not message:
+                    break
+                logging.info(f"{str(address)}: {str(message)}")
+                clientsocket.send(message.encode())
+        except KeyboardInterrupt:
+            clientsocket.close()
+        except Exception as e:
+            logging.error(f"{ON_RCV_ERR_MSG} {str(e)}")
+        finally:
+            clientsocket.close()
+
+    def run(self):
+        server = socket.socket()
+        server.bind((self.host, self.port))
+        server.listen(self.number_of_client)
+        logging.info("Server has started.")
+        try:
+            while True:
+                connection, address = server.accept()
+                _thread.start_new_thread(self.on_new_client,(connection,address, self.port))
+        except socket.error as e:
+            logging.error(f"{ON_SOCKET_ERROR} {str(e)}")
+        except KeyboardInterrupt:
+            connection.close()
+        except Exception as e:
+            logging.error(f"{ON_SERVER_RUN_ERROR} {str(e)}")
+        finally:
+            connection.close()
 
 
 if __name__ == '__main__':
@@ -33,4 +64,6 @@ if __name__ == '__main__':
     parser.add_argument('--port', type=int, default=3000, help='Specify server port number.')
     parser.add_argument('--number_of_client', type=int, default=10, help='Specify number of clients.')
     args = parser.parse_args()
-    run_server(args.port, args.number_of_client)
+
+    server = Server(args.port, args.number_of_client)
+    server.run()
