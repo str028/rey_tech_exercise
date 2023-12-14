@@ -27,7 +27,7 @@ class Server(object):
         self.port = port
         self.number_of_client = number_of_client
 
-    def on_new_client(self, clientsocket, address, port):
+    def on_new_client(self, clientsocket, address):
         try:
             while True:
                 message = clientsocket.recv(BUFFER_SIZE).decode()
@@ -50,7 +50,7 @@ class Server(object):
         try:
             while True:
                 connection, address = server.accept()
-                _thread.start_new_thread(self.on_new_client,(connection,address, self.port))
+                _thread.start_new_thread(self.on_new_client,(connection,address))
         except KeyboardInterrupt:
             connection.close()
         except socket.error as e:
