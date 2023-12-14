@@ -22,6 +22,7 @@ ON_SND_ERR_MSG = "Error occured while sending a message:"
 ON_SOCKET_ERROR = "Error occured while stablising a connection with socket:"
 BAD_FILE_DESCRIPTOR_ERROR = "Bad file descriptor"
 SHUT_DOWN_MSG = "The client is shutting down."
+CONNECTION_REFUSED_MSG = "Cannot establish connection to the server. Ensure that the server is running with the correct port"
 
 BUFFER_SIZE = 1024
 SEND_TIMEOUT = 1
@@ -35,14 +36,19 @@ class Client(object):
         self.client_name = client_name
 
     def initialize_connection(self):
-        self.client = socket.socket()
-        self.client.connect((self.host, self.port))
-        signal.signal(signal.SIGINT, self.signal_handler)
-        self.thread_send = threading.Thread(target= self.on_send_messsage)
-        self.thread_recv = threading.Thread(target=self.on_recv_message)
-        self.thread_send.start()
-        self.thread_recv.start()
-
+        try:
+            self.client = socket.socket()
+            self.client.connect((self.host, self.port))
+            signal.signal(signal.SIGINT, self.signal_handler)
+            self.thread_send = threading.Thread(target= self.on_send_messsage)
+            self.thread_recv = threading.Thread(target=self.on_recv_message)
+            self.thread_send.start()
+            self.thread_recv.start()
+        except ConnectionRefusedError as e:
+            logging.error(f"{CONNECTION_REFUSED_MSG}")
+        except socket.error as e:
+            logging.error(f"{ON_SOCKET_ERROR} {str(e)}")
+        
     def on_send_messsage(self):
         try:
             message = input(CHAT_PROMPT)
